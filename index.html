@@ -38,6 +38,11 @@
             color: #555;
             margin-top: 10px;
         }
+        #statusMessage {
+            color: blue;
+            font-weight: bold;
+            margin-top: 10px;
+        }
         #lateNotice {
             color: red;
             font-weight: bold;
@@ -60,6 +65,7 @@
     <!-- Menampilkan waktu clock in -->
     <p id="clockInTime">Clock In Time: -</p>
     <p id="location">Lokasi: Mengambil lokasi...</p>
+    <p id="statusMessage"></p>
     <p id="lateNotice"></p>
 
     <script>
@@ -90,21 +96,27 @@
         const clockInButton = document.getElementById("clockIn");
         const clockInTime = document.getElementById("clockInTime");
         const lateNotice = document.getElementById("lateNotice");
+        const statusMessage = document.getElementById("statusMessage");
 
         clockInButton.addEventListener("click", () => {
             const currentTime = new Date();
             const timeString = currentTime.toLocaleTimeString();
             const hours = currentTime.getHours();
 
-            // Simpan waktu clock in dan cek apakah terlambat
+            // Simpan waktu clock in ke LocalStorage
             clockInTime.innerText = "Clock In Time: " + timeString;
             localStorage.setItem("clockInTime", timeString);
 
             if (hours >= 8) {
-                lateNotice.innerText = "Anda terlambat!";
+                lateNotice.innerText = "Terlambat!";
+                statusMessage.innerText = "Keterangan: Terlambat disimpan";
             } else {
                 lateNotice.innerText = "";
+                statusMessage.innerText = "Keterangan: Absen Anda berhasil disimpan";
             }
+
+            // Simpan keterangan absen ke LocalStorage
+            localStorage.setItem("absenStatus", lateNotice.innerText || "Absen berhasil");
         });
 
         // Mendapatkan Lokasi Pengguna
@@ -130,6 +142,7 @@
         const savedClockInTime = localStorage.getItem("clockInTime");
         const savedLocationLink = localStorage.getItem("clockInLocation");
         const savedFoto = localStorage.getItem("absenFoto");
+        const savedStatus = localStorage.getItem("absenStatus");
 
         if (savedClockInTime) {
             clockInTime.innerText = "Clock In Time: " + savedClockInTime;
@@ -148,17 +161,23 @@
             canvas.style.display = "none";
         }
 
+        if (savedStatus) {
+            statusMessage.innerText = "Keterangan: " + savedStatus;
+        }
+
         // Fungsi Hapus Absensi
         const deleteButton = document.getElementById("deleteAbsensi");
         deleteButton.addEventListener("click", () => {
             localStorage.removeItem("clockInTime");
             localStorage.removeItem("clockInLocation");
             localStorage.removeItem("absenFoto");
+            localStorage.removeItem("absenStatus");
 
             // Reset tampilan
             clockInTime.innerText = "Clock In Time: -";
             locationDisplay.innerText = "Lokasi: Mengambil lokasi...";
             lateNotice.innerText = "";
+            statusMessage.innerText = "";
             canvas.style.display = "none";
             alert("Data absensi telah dihapus.");
             location.reload();
