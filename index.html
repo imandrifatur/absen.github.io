@@ -15,7 +15,7 @@
         h1 {
             color: #333;
         }
-        #clockIn, #clockOut {
+        #clockIn, #deleteAbsensi {
             padding: 10px 20px;
             margin: 10px;
             cursor: pointer;
@@ -24,7 +24,7 @@
             border: none;
             border-radius: 5px;
         }
-        #clockOut {
+        #deleteAbsensi {
             background-color: #dc3545;
         }
         #video, #canvas {
@@ -38,6 +38,11 @@
             color: #555;
             margin-top: 10px;
         }
+        #lateNotice {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -48,16 +53,14 @@
     <button id="capture">Ambil Foto Selfie</button>
     <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
 
-    <!-- Tombol Clock In dan Clock Out -->
+    <!-- Tombol Clock In dan Delete -->
     <button id="clockIn">Clock In</button>
-    <button id="clockOut">Clock Out</button>
+    <button id="deleteAbsensi">Hapus Absensi</button>
 
-    <!-- Menampilkan waktu clock in dan clock out -->
+    <!-- Menampilkan waktu clock in -->
     <p id="clockInTime">Clock In Time: -</p>
-    <p id="clockOutTime">Clock Out Time: -</p>
-
-    <!-- Lokasi -->
     <p id="location">Lokasi: Mengambil lokasi...</p>
+    <p id="lateNotice"></p>
 
     <script>
         // Akses Kamera
@@ -74,32 +77,46 @@
         captureButton.addEventListener("click", () => {
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             canvas.style.display = "block";
+            saveCanvasToLocalStorage();
         });
 
-        // Fungsi Clock In dan Clock Out
+        // Fungsi untuk menyimpan canvas foto ke LocalStorage
+        function saveCanvasToLocalStorage() {
+            const imageUrl = canvas.toDataURL("image/png");
+            localStorage.setItem("absenFoto", imageUrl);
+        }
+
+        // Fungsi Clock In
         const clockInButton = document.getElementById("clockIn");
-        const clockOutButton = document.getElementById("clockOut");
         const clockInTime = document.getElementById("clockInTime");
-        const clockOutTime = document.getElementById("clockOutTime");
+        const lateNotice = document.getElementById("lateNotice");
 
         clockInButton.addEventListener("click", () => {
-            const time = new Date().toLocaleTimeString();
-            clockInTime.innerText = "Clock In Time: " + time;
-        });
+            const currentTime = new Date();
+            const timeString = currentTime.toLocaleTimeString();
+            const hours = currentTime.getHours();
 
-        clockOutButton.addEventListener("click", () => {
-            const time = new Date().toLocaleTimeString();
-            clockOutTime.innerText = "Clock Out Time: " + time;
+            // Simpan waktu clock in dan cek apakah terlambat
+            clockInTime.innerText = "Clock In Time: " + timeString;
+            localStorage.setItem("clockInTime", timeString);
+
+            if (hours >= 8) {
+                lateNotice.innerText = "Anda terlambat!";
+            } else {
+                lateNotice.innerText = "";
+            }
         });
 
         // Mendapatkan Lokasi Pengguna
         const locationDisplay = document.getElementById("location");
-        
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 position => {
                     const { latitude, longitude } = position.coords;
-                    locationDisplay.innerText = `Lokasi: Lat ${latitude}, Long ${longitude}`;
+                    const locationLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                    locationDisplay.innerHTML = `Lokasi: <a href="${locationLink}" target="_blank">Klik untuk melihat lokasi</a>`;
+                    localStorage.setItem("clockInLocation", locationLink);
                 },
                 error => {
                     locationDisplay.innerText = "Lokasi tidak bisa diakses.";
@@ -108,6 +125,44 @@
         } else {
             locationDisplay.innerText = "Geolocation tidak didukung di browser ini.";
         }
+
+        // Menampilkan data absen dari LocalStorage jika tersedia
+        const savedClockInTime = localStorage.getItem("clockInTime");
+        const savedLocationLink = localStorage.getItem("clockInLocation");
+        const savedFoto = localStorage.getItem("absenFoto");
+
+        if (savedClockInTime) {
+            clockInTime.innerText = "Clock In Time: " + savedClockInTime;
+        }
+
+        if (savedLocationLink) {
+            locationDisplay.innerHTML = `Lokasi: <a href="${savedLocationLink}" target="_blank">Klik untuk melihat lokasi</a>`;
+        }
+
+        if (savedFoto) {
+            const img = new Image();
+            img.src = savedFoto;
+            img.width = 320;
+            img.height = 240;
+            canvas.parentNode.insertBefore(img, canvas);
+            canvas.style.display = "none";
+        }
+
+        // Fungsi Hapus Absensi
+        const deleteButton = document.getElementById("deleteAbsensi");
+        deleteButton.addEventListener("click", () => {
+            localStorage.removeItem("clockInTime");
+            localStorage.removeItem("clockInLocation");
+            localStorage.removeItem("absenFoto");
+
+            // Reset tampilan
+            clockInTime.innerText = "Clock In Time: -";
+            locationDisplay.innerText = "Lokasi: Mengambil lokasi...";
+            lateNotice.innerText = "";
+            canvas.style.display = "none";
+            alert("Data absensi telah dihapus.");
+            location.reload();
+        });
     </script>
 </body>
 </html>
