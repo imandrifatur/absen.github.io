@@ -1,186 +1,137 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absen Online</title>
+    <title>Absensi Online Sederhana</title>
     <style>
         body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 20px;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f7f7f7;
         }
         h1 {
-            color: #333;
+            margin-bottom: 20px;
         }
-        #clockIn, #deleteAbsensi {
-            padding: 10px 20px;
-            margin: 10px;
-            cursor: pointer;
-            background-color: #28a745;
-            color: #fff;
+        form {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #fff;
+            width: 90%;
+            max-width: 400px;
+        }
+        label {
+            margin-top: 10px;
+            display: block;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 1rem;
+            margin-top: 15px;
             border: none;
             border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
         }
-        #deleteAbsensi {
-            background-color: #dc3545;
-        }
-        #video, #canvas {
-            display: block;
-            margin: 10px 0;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        #location {
-            font-size: 14px;
-            color: #555;
-            margin-top: 10px;
-        }
-        #statusMessage {
-            color: blue;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        #lateNotice {
-            color: red;
-            font-weight: bold;
-            margin-top: 10px;
+        button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
-    <h1>Absen Online</h1>
+    <h1>Absensi Online</h1>
+    <form id="attendanceForm">
+        <label for="name">Nama:</label>
+        <input type="text" id="name" name="name" required>
 
-    <!-- Video untuk Preview Kamera -->
-    <video id="video" width="320" height="240" autoplay></video>
-    <button id="capture">Ambil Foto Selfie</button>
-    <canvas id="canvas" width="320" height="240" style="display: none;"></canvas>
+        <label for="checkIn">Jam Masuk:</label>
+        <input type="text" id="checkIn" name="checkIn" readonly>
 
-    <!-- Tombol Clock In dan Delete -->
-    <button id="clockIn">Clock In</button>
-    <button id="deleteAbsensi">Hapus Absensi</button>
+        <label for="location">Lokasi (Latitude, Longitude):</label>
+        <input type="text" id="location" name="location" readonly>
 
-    <!-- Menampilkan waktu clock in -->
-    <p id="clockInTime">Clock In Time: -</p>
-    <p id="location">Lokasi: Mengambil lokasi...</p>
-    <p id="statusMessage"></p>
-    <p id="lateNotice"></p>
+        <label for="address">Alamat:</label>
+        <input type="text" id="address" name="address" readonly>
+
+        <button type="button" id="checkInButton">Absen Masuk</button>
+        <button type="button" id="checkOutButton" style="display: none;">Absen Keluar</button>
+    </form>
 
     <script>
-        // Akses Kamera
-        const video = document.getElementById("video");
-        const canvas = document.getElementById("canvas");
-        const context = canvas.getContext("2d");
-        const captureButton = document.getElementById("capture");
+        let checkInTime;
+        const checkInButton = document.getElementById('checkInButton');
+        const checkOutButton = document.getElementById('checkOutButton');
+        const checkInInput = document.getElementById('checkIn');
+        const locationInput = document.getElementById('location');
+        const addressInput = document.getElementById('address');
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => video.srcObject = stream)
-            .catch(error => alert("Kamera tidak bisa diakses."));
-
-        // Ambil Foto Selfie
-        captureButton.addEventListener("click", () => {
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.style.display = "block";
-            saveCanvasToLocalStorage();
-        });
-
-        // Fungsi untuk menyimpan canvas foto ke LocalStorage
-        function saveCanvasToLocalStorage() {
-            const imageUrl = canvas.toDataURL("image/png");
-            localStorage.setItem("absenFoto", imageUrl);
-        }
-
-        // Fungsi Clock In
-        const clockInButton = document.getElementById("clockIn");
-        const clockInTime = document.getElementById("clockInTime");
-        const lateNotice = document.getElementById("lateNotice");
-        const statusMessage = document.getElementById("statusMessage");
-
-        clockInButton.addEventListener("click", () => {
-            const currentTime = new Date();
-            const timeString = currentTime.toLocaleTimeString();
-            const hours = currentTime.getHours();
-
-            // Simpan waktu clock in ke LocalStorage
-            clockInTime.innerText = "Clock In Time: " + timeString;
-            localStorage.setItem("clockInTime", timeString);
-
-            if (hours >= 8) {
-                lateNotice.innerText = "Terlambat!";
-                statusMessage.innerText = "Keterangan: Terlambat disimpan";
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
             } else {
-                lateNotice.innerText = "";
-                statusMessage.innerText = "Keterangan: Absen Anda berhasil disimpan";
+                alert("Geolocation tidak didukung oleh browser ini.");
             }
+        }
 
-            // Simpan keterangan absen ke LocalStorage
-            localStorage.setItem("absenStatus", lateNotice.innerText || "Absen berhasil");
+        function showPosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            locationInput.value = `${latitude}, ${longitude}`;
+
+            // Fetch address using a reverse geocoding API (contoh menggunakan Nominatim OpenStreetMap)
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+                .then(response => response.json())
+                .then(data => {
+                    addressInput.value = data.display_name || "Alamat tidak ditemukan";
+                })
+                .catch(() => {
+                    addressInput.value = "Tidak dapat mengambil alamat.";
+                });
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Pengguna menolak permintaan geolokasi.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Informasi lokasi tidak tersedia.");
+                    break;
+                case error.TIMEOUT:
+                    alert("Permintaan untuk mendapatkan lokasi waktu habis.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Terjadi kesalahan yang tidak diketahui.");
+                    break;
+            }
+        }
+
+        checkInButton.addEventListener('click', () => {
+            checkInTime = new Date().toLocaleTimeString();
+            checkInInput.value = checkInTime;
+            getLocation();
+            checkInButton.style.display = 'none';
+            checkOutButton.style.display = 'inline-block';
         });
 
-        // Mendapatkan Lokasi Pengguna
-        const locationDisplay = document.getElementById("location");
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    const { latitude, longitude } = position.coords;
-                    const locationLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-                    locationDisplay.innerHTML = `Lokasi: <a href="${locationLink}" target="_blank">Klik untuk melihat lokasi</a>`;
-                    localStorage.setItem("clockInLocation", locationLink);
-                },
-                error => {
-                    locationDisplay.innerText = "Lokasi tidak bisa diakses.";
-                }
-            );
-        } else {
-            locationDisplay.innerText = "Geolocation tidak didukung di browser ini.";
-        }
-
-        // Menampilkan data absen dari LocalStorage jika tersedia
-        const savedClockInTime = localStorage.getItem("clockInTime");
-        const savedLocationLink = localStorage.getItem("clockInLocation");
-        const savedFoto = localStorage.getItem("absenFoto");
-        const savedStatus = localStorage.getItem("absenStatus");
-
-        if (savedClockInTime) {
-            clockInTime.innerText = "Clock In Time: " + savedClockInTime;
-        }
-
-        if (savedLocationLink) {
-            locationDisplay.innerHTML = `Lokasi: <a href="${savedLocationLink}" target="_blank">Klik untuk melihat lokasi</a>`;
-        }
-
-        if (savedFoto) {
-            const img = new Image();
-            img.src = savedFoto;
-            img.width = 320;
-            img.height = 240;
-            canvas.parentNode.insertBefore(img, canvas);
-            canvas.style.display = "none";
-        }
-
-        if (savedStatus) {
-            statusMessage.innerText = "Keterangan: " + savedStatus;
-        }
-
-        // Fungsi Hapus Absensi
-        const deleteButton = document.getElementById("deleteAbsensi");
-        deleteButton.addEventListener("click", () => {
-            localStorage.removeItem("clockInTime");
-            localStorage.removeItem("clockInLocation");
-            localStorage.removeItem("absenFoto");
-            localStorage.removeItem("absenStatus");
-
-            // Reset tampilan
-            clockInTime.innerText = "Clock In Time: -";
-            locationDisplay.innerText = "Lokasi: Mengambil lokasi...";
-            lateNotice.innerText = "";
-            statusMessage.innerText = "";
-            canvas.style.display = "none";
-            alert("Data absensi telah dihapus.");
-            location.reload();
+        checkOutButton.addEventListener('click', () => {
+            const checkOutTime = new Date().toLocaleTimeString();
+            alert(`Absen keluar dicatat: ${checkOutTime}`);
         });
     </script>
 </body>
